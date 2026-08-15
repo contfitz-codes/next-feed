@@ -632,6 +632,97 @@ function renderStats() {
 
 }
 
+/* =========================
+   FEEDING HISTORY
+========================= */
+
+function renderHistory() {
+
+  const recentFeeds =
+    state.feeds
+      .slice()
+      .reverse()
+      .slice(0, 10);
+
+
+  if (!recentFeeds.length) {
+
+    $("history").innerHTML =
+      `<div class="muted">
+        No completed feedings yet.
+      </div>`;
+
+    return;
+
+  }
+
+
+  $("history").innerHTML =
+    recentFeeds
+      .map((feed, index) => {
+
+        const feedNumber =
+          state.feeds.length - index;
+
+
+        const feedingDuration =
+          feed.finish -
+          feed.feedingStart;
+
+
+        let readyText =
+          "First feeding";
+
+        if (
+          feed.readyDuration &&
+          feed.readyDuration > 0
+        ) {
+
+          readyText =
+            `Get ready: ${durationText(
+              feed.readyDuration
+            )}`;
+
+        }
+
+
+        return `
+          <div class="history-row">
+
+            <div>
+
+              <b>
+                Feed #${feedNumber}
+              </b>
+
+              <small>
+                ${fmtTime(feed.feedingStart)}
+                →
+                ${fmtTime(feed.finish)}
+              </small>
+
+              <small>
+                ${readyText}
+              </small>
+
+            </div>
+
+
+            <div>
+
+              ${durationText(
+                feedingDuration
+              )}
+
+            </div>
+
+          </div>
+        `;
+
+      })
+      .join("");
+
+}
 
 /* =========================
    GET-READY SESSION
