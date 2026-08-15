@@ -3,121 +3,548 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+
   <meta name="theme-color" content="#f7f5f0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Next Feed">
+
   <title>Next Feed</title>
+
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <main class="app">
-    <header class="topbar">
-      <div>
-        <div class="eyebrow">NEWBORN FEEDING</div>
-        <h1>Next Feed</h1>
+
+<main class="app">
+
+  <!-- HEADER -->
+
+  <header class="topbar">
+
+    <div>
+      <div class="eyebrow">NEWBORN FEEDING</div>
+      <h1>Next Feed</h1>
+    </div>
+
+    <button
+      id="settingsBtn"
+      class="icon-btn"
+      aria-label="Settings"
+    >
+      ⚙️
+    </button>
+
+  </header>
+
+
+  <!-- INITIAL SETUP -->
+
+  <section id="setupCard" class="card hidden">
+
+    <h2>Set up your routine</h2>
+
+    <p class="muted">
+      The app will use your actual get-ready times to learn how long
+      it typically takes you to get baby ready to eat.
+    </p>
+
+    <label>
+      Count the feeding interval from
+
+      <select id="intervalBasis">
+
+        <option value="finish" selected>
+          feeding finish
+        </option>
+
+        <option value="start">
+          feeding start
+        </option>
+
+      </select>
+
+    </label>
+
+
+    <label>
+      Target interval
+
+      <div class="range-row">
+
+        <select id="minHours">
+
+          <option value="2">2h</option>
+          <option value="2.5" selected>2h 30m</option>
+          <option value="3">3h</option>
+          <option value="3.5">3h 30m</option>
+
+        </select>
+
+        <span>to</span>
+
+        <select id="maxHours">
+
+          <option value="2.5">2h 30m</option>
+          <option value="3" selected>3h</option>
+          <option value="3.5">3h 30m</option>
+          <option value="4">4h</option>
+
+        </select>
+
       </div>
-      <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙️</button>
-    </header>
 
-    <section id="setupCard" class="card hidden">
-      <h2>Set up your routine</h2>
-      <p class="muted">Choose how you want the app to calculate the next feeding.</p>
-      <label>Count the interval from
-        <select id="intervalBasis">
-          <option value="finish">feeding finish</option>
-          <option value="start">feeding start</option>
-        </select>
-      </label>
-      <label>Target interval
-        <div class="range-row">
-          <select id="minHours">
-            <option value="2">2h</option><option value="2.5" selected>2h 30m</option>
-            <option value="3">3h</option><option value="3.5">3h 30m</option>
-          </select>
-          <span>to</span>
-          <select id="maxHours">
-            <option value="2.5">2h 30m</option><option value="3" selected>3h</option>
-            <option value="3.5">3h 30m</option><option value="4">4h</option>
-          </select>
+    </label>
+
+
+    <label>
+      Daily minimum goal
+
+      <select id="dailyGoal">
+
+        <option value="8" selected>8 feeds</option>
+        <option value="9">9 feeds</option>
+        <option value="10">10 feeds</option>
+
+      </select>
+
+    </label>
+
+
+    <p class="small-note">
+      Your initial get-ready estimate is 15 minutes.
+      The app will replace this with your actual average after you
+      complete get-ready sessions.
+    </p>
+
+
+    <button
+      id="saveSettings"
+      class="primary"
+    >
+      Save routine
+    </button>
+
+  </section>
+
+
+  <!-- MAIN HOME -->
+
+  <section id="homeView">
+
+
+    <!-- NEXT FEED -->
+
+    <section class="hero card">
+
+      <div class="eyebrow">
+        NEXT FEED
+      </div>
+
+
+      <div class="next-label">
+        START GETTING READY
+      </div>
+
+
+      <div
+        id="getReadyTime"
+        class="get-ready-time"
+      >
+        —
+      </div>
+
+
+      <div
+        id="getReadyCountdown"
+        class="countdown"
+      >
+        —
+      </div>
+
+
+      <div class="target-block">
+
+        <div class="target-label">
+          BABY EATING TARGET
         </div>
-      </label>
-      <label>Daily goal
-        <select id="dailyGoal">
-          <option value="8" selected>8–12 feeds</option>
-          <option value="9">9–12 feeds</option>
-          <option value="10">10–12 feeds</option>
-        </select>
-      </label>
-      <button id="saveSettings" class="primary">Save routine</button>
+
+        <div
+          id="nextWindow"
+          class="next-window"
+        >
+          Start a feeding to begin
+        </div>
+
+      </div>
+
+
+      <div
+        id="lastInfo"
+        class="muted"
+      >
+        No feeding recorded yet.
+      </div>
+
+
+      <button
+        id="getReadyBtn"
+        class="primary big"
+      >
+        START GETTING READY
+      </button>
+
+
+      <button
+        id="startFeedingBtn"
+        class="secondary big hidden"
+      >
+        START FEEDING
+      </button>
+
     </section>
 
-    <section id="homeView">
-      <section class="hero card">
-        <div class="eyebrow">NEXT FEED</div>
-        <div id="nextWindow" class="next-window">Start a feeding to begin</div>
-        <div id="countdown" class="countdown">—</div>
-        <div id="lastInfo" class="muted">No feeding recorded yet.</div>
-        <button id="startBtn" class="primary big">START FEEDING</button>
-      </section>
 
-      <section class="stats">
-        <div class="stat card"><span>Feeds today</span><strong id="feedCount">0</strong><small id="goalText">Goal: 8–12</small></div>
-        <div class="stat card"><span>Last finished</span><strong id="lastFinished">—</strong><small id="lastDuration">—</small></div>
-      </section>
+    <!-- 24 HOUR PROGRESS -->
 
-      <section id="activeCard" class="card hidden">
-        <div class="active-head">
-          <div>
-            <div class="eyebrow">ACTIVE FEEDING</div>
-            <h2 id="feedNumber">Feeding #1</h2>
+    <section class="card progress-card">
+
+      <div class="section-head">
+
+        <h2>24-Hour Progress</h2>
+
+        <span id="progressStatus">
+          —
+        </span>
+
+      </div>
+
+
+      <div class="progress-numbers">
+
+        <strong id="feedCount">
+          0
+        </strong>
+
+        <span>
+          / <span id="goalNumber">8</span> minimum feeds
+        </span>
+
+      </div>
+
+
+      <div class="progress-bar">
+
+        <div
+          id="progressFill"
+          class="progress-fill"
+        ></div>
+
+      </div>
+
+
+      <div
+        id="progressMessage"
+        class="muted"
+      >
+        No feeds recorded yet.
+      </div>
+
+    </section>
+
+
+    <!-- GET READY AVERAGE -->
+
+    <section class="stats">
+
+      <div class="stat card">
+
+        <span>
+          Get-ready average
+        </span>
+
+        <strong id="averageReady">
+          15 min
+        </strong>
+
+        <small id="readySessionCount">
+          Initial estimate
+        </small>
+
+      </div>
+
+
+      <div class="stat card">
+
+        <span>
+          Last feeding finished
+        </span>
+
+        <strong id="lastFinished">
+          —
+        </strong>
+
+        <small id="lastDuration">
+          —
+        </small>
+
+      </div>
+
+    </section>
+
+
+    <!-- ACTIVE GET READY -->
+
+    <section
+      id="getReadyCard"
+      class="card hidden"
+    >
+
+      <div class="active-head">
+
+        <div>
+
+          <div class="eyebrow">
+            GETTING READY
           </div>
-          <div id="elapsed" class="timer">00:00</div>
-        </div>
-        <div class="steps">
-          <button class="step" data-step="nurse"><span>○</span><div><b>Nurse</b><small>7–20 min</small></div></button>
-          <button class="step" data-step="pump"><span>○</span><div><b>Pump</b><small>~20 min</small></div></button>
-          <button class="step" data-step="syringe"><span>○</span><div><b>Syringe</b><small>20–30 min</small></div></button>
-        </div>
-        <label class="notes-label">Syringe amount (optional)
-          <input id="amount" inputmode="decimal" placeholder="e.g. 25 mL">
-        </label>
-        <button id="finishBtn" class="primary big">FINISH FEEDING</button>
-      </section>
 
-      <section class="card">
-        <div class="section-head"><h2>Today</h2><span id="todayDate"></span></div>
-        <div id="history" class="history"></div>
-      </section>
+          <h2>
+            Get baby ready to eat
+          </h2>
 
-      <section class="card disclaimer">
-        <b>For tracking only</b>
-        <p>This app helps with timing and record-keeping. Follow your baby's pediatrician/lactation consultant for the feeding frequency and supplementation plan that is right for your baby.</p>
-      </section>
+        </div>
+
+
+        <div
+          id="getReadyElapsed"
+          class="timer"
+        >
+          00:00
+        </div>
+
+      </div>
+
+
+      <div class="ready-instructions">
+
+        <div>Wake baby</div>
+        <div>Change diaper if needed</div>
+        <div>Get ready to nurse</div>
+
+      </div>
+
+
+      <button
+        id="babyReadyBtn"
+        class="primary big"
+      >
+        BABY IS READY TO EAT
+      </button>
+
+
+      <button
+        id="cancelReadyBtn"
+        class="text-btn cancel-btn"
+      >
+        Cancel
+      </button>
+
     </section>
 
-    <section id="settingsView" class="card hidden">
-      <div class="section-head"><h2>Settings</h2><button id="closeSettings" class="text-btn">Done</button></div>
-      <label>Count the interval from
-        <select id="settingsBasis">
-          <option value="finish">feeding finish</option>
-          <option value="start">feeding start</option>
-        </select>
-      </label>
-      <label>Target interval
-        <div class="range-row">
-          <select id="settingsMin"></select><span>to</span><select id="settingsMax"></select>
+
+    <!-- ACTIVE FEEDING -->
+
+    <section
+      id="feedingCard"
+      class="card hidden"
+    >
+
+      <div class="active-head">
+
+        <div>
+
+          <div class="eyebrow">
+            FEEDING
+          </div>
+
+          <h2>
+            Baby is eating
+          </h2>
+
         </div>
-      </label>
-      <label>Daily goal
-        <select id="settingsGoal">
-          <option value="8">8–12 feeds</option><option value="9">9–12 feeds</option><option value="10">10–12 feeds</option>
-        </select>
-      </label>
-      <button id="resetBtn" class="danger">Reset all feeding data</button>
+
+
+        <div
+          id="feedingElapsed"
+          class="timer"
+        >
+          00:00
+        </div>
+
+      </div>
+
+
+      <p class="muted">
+        This is the actual start of the feeding.
+        When the entire feeding is finished, tap below.
+      </p>
+
+
+      <button
+        id="finishFeedingBtn"
+        class="primary big"
+      >
+        FINISH FEEDING
+      </button>
+
     </section>
-  </main>
-  <script src="app.js"></script>
+
+
+    <!-- TODAY / HISTORY -->
+
+    <section class="card">
+
+      <div class="section-head">
+
+        <h2>Recent Feedings</h2>
+
+      </div>
+
+      <div
+        id="history"
+        class="history"
+      ></div>
+
+    </section>
+
+
+    <!-- DISCLAIMER -->
+
+    <section class="card disclaimer">
+
+      <b>For tracking only</b>
+
+      <p>
+        This app helps with timing and record-keeping.
+        Follow your baby's pediatrician or lactation consultant
+        for the feeding frequency and supplementation plan that
+        is right for your baby.
+      </p>
+
+    </section>
+
+  </section>
+
+
+  <!-- SETTINGS -->
+
+  <section
+    id="settingsView"
+    class="card hidden"
+  >
+
+    <div class="section-head">
+
+      <h2>Settings</h2>
+
+      <button
+        id="closeSettings"
+        class="text-btn"
+      >
+        Done
+      </button>
+
+    </div>
+
+
+    <label>
+      Count the feeding interval from
+
+      <select id="settingsBasis">
+
+        <option value="finish">
+          feeding finish
+        </option>
+
+        <option value="start">
+          feeding start
+        </option>
+
+      </select>
+
+    </label>
+
+
+    <label>
+      Target interval
+
+      <div class="range-row">
+
+        <select id="settingsMin">
+
+          <option value="2">2h</option>
+          <option value="2.5">2h 30m</option>
+          <option value="3">3h</option>
+          <option value="3.5">3h 30m</option>
+
+        </select>
+
+        <span>to</span>
+
+        <select id="settingsMax">
+
+          <option value="2.5">2h 30m</option>
+          <option value="3">3h</option>
+          <option value="3.5">3h 30m</option>
+          <option value="4">4h</option>
+
+        </select>
+
+      </div>
+
+    </label>
+
+
+    <label>
+      Daily minimum goal
+
+      <select id="settingsGoal">
+
+        <option value="8">8 feeds</option>
+        <option value="9">9 feeds</option>
+        <option value="10">10 feeds</option>
+
+      </select>
+
+    </label>
+
+
+    <div class="settings-info">
+
+      <b>Get-ready timing</b>
+
+      <p>
+        The app automatically uses the average of your completed
+        get-ready sessions to determine when you should start
+        getting ready for the next feeding.
+      </p>
+
+    </div>
+
+
+    <button
+      id="resetBtn"
+      class="danger"
+    >
+      Reset all feeding data
+    </button>
+
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+
 </body>
 </html>
