@@ -401,26 +401,26 @@ function renderNext() {
 
   if (!window) {
 
-    $("getReadyTime").textContent =
-      "Start your first feeding";
+  $("getReadyTime").textContent =
+    "Ready when baby eats";
 
-    $("getReadyCountdown").textContent =
-      "—";
+  $("getReadyCountdown").textContent =
+    "Record the first feeding to start your schedule.";
 
-    $("nextWindow").textContent =
-      "No previous feeding yet";
+  $("nextWindow").textContent =
+    "No previous feeding yet";
 
-    $("lastInfo").textContent =
-      "Finish your first feeding to begin the schedule.";
+  $("lastInfo").textContent =
+    "After this feeding ends, the app will calculate the next get-ready time.";
 
-    $("getReadyBtn").textContent =
-      "START GETTING READY";
+  $("getReadyBtn").textContent =
+    "START FIRST FEEDING";
 
-    $("getReadyBtn").disabled = true;
+  $("getReadyBtn").disabled = false;
 
-    return;
+  return;
 
-  }
+}
 
 
   $("getReadyBtn").disabled =
@@ -662,6 +662,29 @@ function showGetReady() {
 
 }
 
+function startFirstFeeding() {
+
+  if (state.active) {
+    return;
+  }
+
+  state.active = {
+
+    mode: "feeding",
+
+    readyStart: null,
+
+    readyDuration: null,
+
+    feedingStart: Date.now()
+
+  };
+
+  save();
+
+  render();
+
+}
 
 function startGettingReady() {
 
@@ -854,7 +877,15 @@ function finishFeeding() {
 
 $("getReadyBtn").onclick = () => {
 
-  startGettingReady();
+  if (!state.feeds.length) {
+
+    startFirstFeeding();
+
+  } else {
+
+    startGettingReady();
+
+  }
 
 };
 
