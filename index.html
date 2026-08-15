@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5f0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Next Feed">
+  <title>Next Feed</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">NEWBORN FEEDING</div>
+        <h1>Next Feed</h1>
+      </div>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙️</button>
+    </header>
+
+    <section id="setupCard" class="card hidden">
+      <h2>Set up your routine</h2>
+      <p class="muted">Choose how you want the app to calculate the next feeding.</p>
+      <label>Count the interval from
+        <select id="intervalBasis">
+          <option value="finish">feeding finish</option>
+          <option value="start">feeding start</option>
+        </select>
+      </label>
+      <label>Target interval
+        <div class="range-row">
+          <select id="minHours">
+            <option value="2">2h</option><option value="2.5" selected>2h 30m</option>
+            <option value="3">3h</option><option value="3.5">3h 30m</option>
+          </select>
+          <span>to</span>
+          <select id="maxHours">
+            <option value="2.5">2h 30m</option><option value="3" selected>3h</option>
+            <option value="3.5">3h 30m</option><option value="4">4h</option>
+          </select>
+        </div>
+      </label>
+      <label>Daily goal
+        <select id="dailyGoal">
+          <option value="8" selected>8–12 feeds</option>
+          <option value="9">9–12 feeds</option>
+          <option value="10">10–12 feeds</option>
+        </select>
+      </label>
+      <button id="saveSettings" class="primary">Save routine</button>
+    </section>
+
+    <section id="homeView">
+      <section class="hero card">
+        <div class="eyebrow">NEXT FEED</div>
+        <div id="nextWindow" class="next-window">Start a feeding to begin</div>
+        <div id="countdown" class="countdown">—</div>
+        <div id="lastInfo" class="muted">No feeding recorded yet.</div>
+        <button id="startBtn" class="primary big">START FEEDING</button>
+      </section>
+
+      <section class="stats">
+        <div class="stat card"><span>Feeds today</span><strong id="feedCount">0</strong><small id="goalText">Goal: 8–12</small></div>
+        <div class="stat card"><span>Last finished</span><strong id="lastFinished">—</strong><small id="lastDuration">—</small></div>
+      </section>
+
+      <section id="activeCard" class="card hidden">
+        <div class="active-head">
+          <div>
+            <div class="eyebrow">ACTIVE FEEDING</div>
+            <h2 id="feedNumber">Feeding #1</h2>
+          </div>
+          <div id="elapsed" class="timer">00:00</div>
+        </div>
+        <div class="steps">
+          <button class="step" data-step="nurse"><span>○</span><div><b>Nurse</b><small>7–20 min</small></div></button>
+          <button class="step" data-step="pump"><span>○</span><div><b>Pump</b><small>~20 min</small></div></button>
+          <button class="step" data-step="syringe"><span>○</span><div><b>Syringe</b><small>20–30 min</small></div></button>
+        </div>
+        <label class="notes-label">Syringe amount (optional)
+          <input id="amount" inputmode="decimal" placeholder="e.g. 25 mL">
+        </label>
+        <button id="finishBtn" class="primary big">FINISH FEEDING</button>
+      </section>
+
+      <section class="card">
+        <div class="section-head"><h2>Today</h2><span id="todayDate"></span></div>
+        <div id="history" class="history"></div>
+      </section>
+
+      <section class="card disclaimer">
+        <b>For tracking only</b>
+        <p>This app helps with timing and record-keeping. Follow your baby's pediatrician/lactation consultant for the feeding frequency and supplementation plan that is right for your baby.</p>
+      </section>
+    </section>
+
+    <section id="settingsView" class="card hidden">
+      <div class="section-head"><h2>Settings</h2><button id="closeSettings" class="text-btn">Done</button></div>
+      <label>Count the interval from
+        <select id="settingsBasis">
+          <option value="finish">feeding finish</option>
+          <option value="start">feeding start</option>
+        </select>
+      </label>
+      <label>Target interval
+        <div class="range-row">
+          <select id="settingsMin"></select><span>to</span><select id="settingsMax"></select>
+        </div>
+      </label>
+      <label>Daily goal
+        <select id="settingsGoal">
+          <option value="8">8–12 feeds</option><option value="9">9–12 feeds</option><option value="10">10–12 feeds</option>
+        </select>
+      </label>
+      <button id="resetBtn" class="danger">Reset all feeding data</button>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
