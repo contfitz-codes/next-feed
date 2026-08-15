@@ -1,4 +1,4 @@
-const CACHE = "next-feed-v2";
+const CACHE = "next-feed-v3";
 
 const ASSETS = [
   "./",
