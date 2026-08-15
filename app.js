@@ -66,7 +66,7 @@ function save() {
 
 function mins(value) {
 
-  return value * 60 * 1000;
+  return value * 60 * 60 * 1000;
 
 }
 
