@@ -1,116 +1,1165 @@
-const KEY="next-feed-v1";
-const defaults={basis:"finish",min:2.5,max:3,goal:8,feeds:[],active:null};
+const KEY = "next-feed-v3";
 
-let state=load();
-const $=id=>document.getElementById(id);
+const defaults = {
+  basis: "finish",
+  min: 2.5,
+  max: 3,
+  goal: 8,
 
-function load(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch{return {...defaults}}}
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function fmtTime(ts){return new Date(ts).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}
-function fmtDate(ts){return new Date(ts).toLocaleDateString([], {month:"short",day:"numeric"})}
-function mins(v){return v*60}
-function durationText(ms){let m=Math.round(ms/60000); return m<60?`${m} min`:`${Math.floor(m/60)}h ${m%60}m`}
-function todayFeeds(){
-  const now=new Date(); return state.feeds.filter(f=>{const d=new Date(f.start);return d.toDateString()===now.toDateString()})
+  // Initial estimate before we have real data.
+  initialReadyMinutes: 15,
+
+  // Completed feeding sessions.
+  feeds: [],
+
+  // Current get-ready or feeding session.
+  active: null
+};
+
+let state = load();
+
+const $ = id => document.getElementById(id);
+
+
+/* =========================
+   STORAGE
+========================= */
+
+function load() {
+
+  try {
+
+    const saved =
+      JSON.parse(
+        localStorage.getItem(KEY) || "{}"
+      );
+
+    return {
+      ...defaults,
+      ...saved
+    };
+
+  } catch {
+
+    return {
+      ...defaults
+    };
+
+  }
+
 }
-function setOptions(id,values,selected){
-  const el=$(id); el.innerHTML=values.map(v=>`<option value="${v}">${v}h</option>`).join("");
-  el.value=selected;
+
+
+function save() {
+
+  localStorage.setItem(
+    KEY,
+    JSON.stringify(state)
+  );
+
 }
-function setupUI(){
-  $("intervalBasis").value=state.basis;
-  $("minHours").value=state.min;
-  $("maxHours").value=state.max;
-  $("dailyGoal").value=state.goal;
-  $("settingsBasis").value=state.basis;
-  setOptions("settingsMin",[2,2.5,3,3.5],state.min);
-  setOptions("settingsMax",[2.5,3,3.5,4],state.max);
-  $("settingsGoal").value=state.goal;
-  $("goalText").textContent=`Goal: ${state.goal}–12`;
-  $("todayDate").textContent=new Date().toLocaleDateString([], {month:"short",day:"numeric"});
+
+
+/* =========================
+   TIME HELPERS
+========================= */
+
+function mins(value) {
+
+  return value * 60 * 1000;
+
 }
-function render(){
+
+
+function fmtTime(timestamp) {
+
+  return new Date(timestamp)
+    .toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+
+}
+
+
+function fmtDate(timestamp) {
+
+  return new Date(timestamp)
+    .toLocaleDateString([], {
+      month: "short",
+      day: "numeric"
+    });
+
+}
+
+
+function durationText(milliseconds) {
+
+  const totalSeconds =
+    Math.max(
+      0,
+      Math.round(milliseconds / 1000)
+    );
+
+  const hours =
+    Math.floor(totalSeconds / 3600);
+
+  const minutes =
+    Math.floor(
+      (totalSeconds % 3600) / 60
+    );
+
+  const seconds =
+    totalSeconds % 60;
+
+
+  if (hours > 0) {
+
+    return `${hours}h ${minutes}m`;
+
+  }
+
+
+  if (minutes > 0) {
+
+    return `${minutes}m ${seconds}s`;
+
+  }
+
+
+  return `${seconds}s`;
+
+}
+
+
+/* =========================
+   ROLLING 24-HOUR FEEDS
+========================= */
+
+function feedsLast24Hours() {
+
+  const cutoff =
+    Date.now() - (24 * 60 * 60 * 1000);
+
+  return state.feeds.filter(
+    feed => feed.finish >= cutoff
+  );
+
+}
+
+
+/* =========================
+   GET-READY AVERAGE
+========================= */
+
+function completedReadySessions() {
+
+  return state.feeds.filter(
+    feed =>
+      feed.readyStart &&
+      feed.feedingStart &&
+      feed.readyDuration > 0
+  );
+
+}
+
+
+function getReadyAverage() {
+
+  const sessions =
+    completedReadySessions();
+
+
+  if (!sessions.length) {
+
+    return state.initialReadyMinutes;
+
+  }
+
+
+  const total =
+    sessions.reduce(
+      (sum, feed) =>
+        sum + feed.readyDuration,
+      0
+    );
+
+
+  return (
+    total /
+    sessions.length /
+    60000
+  );
+
+}
+
+
+function getReadyAverageText() {
+
+  const average =
+    getReadyAverage();
+
+
+  if (average < 1) {
+
+    return "<1 min";
+
+  }
+
+
+  const rounded =
+    Math.round(average);
+
+  return `${rounded} min`;
+
+}
+
+
+/* =========================
+   NEXT FEED CALCULATION
+========================= */
+
+function nextEatingWindow() {
+
+  if (!state.feeds.length) {
+
+    return null;
+
+  }
+
+
+  const lastFeed =
+    state.feeds[
+      state.feeds.length - 1
+    ];
+
+
+  const base =
+    state.basis === "finish"
+      ? lastFeed.finish
+      : lastFeed.feedingStart;
+
+
+  return {
+
+    lo:
+      base +
+      mins(state.min),
+
+    hi:
+      base +
+      mins(state.max)
+
+  };
+
+}
+
+
+/*
+  We use the EARLIEST target eating time
+  to determine when to begin getting ready.
+
+  Example:
+
+  Eating target:
+  4:15–4:45
+
+  Average get-ready:
+  15 min
+
+  Start getting ready:
+  4:00
+*/
+
+function nextGetReadyTime() {
+
+  const window =
+    nextEatingWindow();
+
+
+  if (!window) {
+
+    return null;
+
+  }
+
+
+  const averageMilliseconds =
+    getReadyAverage() *
+    60000;
+
+
+  return (
+    window.lo -
+    averageMilliseconds
+  );
+
+}
+
+
+/* =========================
+   SETUP / SETTINGS
+========================= */
+
+function setupUI() {
+
+  $("intervalBasis").value =
+    state.basis;
+
+  $("minHours").value =
+    state.min;
+
+  $("maxHours").value =
+    state.max;
+
+  $("dailyGoal").value =
+    state.goal;
+
+
+  $("settingsBasis").value =
+    state.basis;
+
+  $("settingsMin").value =
+    state.min;
+
+  $("settingsMax").value =
+    state.max;
+
+  $("settingsGoal").value =
+    state.goal;
+
+
+  $("goalNumber").textContent =
+    state.goal;
+
+}
+
+
+/* =========================
+   MAIN RENDER
+========================= */
+
+function render() {
+
   setupUI();
-  const today=todayFeeds();
-  $("feedCount").textContent=today.length;
-  $("lastFinished").textContent=state.feeds.length?fmtTime(state.feeds[state.feeds.length-1].finish):"—";
-  $("lastDuration").textContent=state.feeds.length?durationText(state.feeds[state.feeds.length-1].finish-state.feeds[state.feeds.length-1].start):"—";
+
+  renderProgress();
+
+  renderStats();
+
   renderHistory();
-  if(state.active) showActive(); else {$("activeCard").classList.add("hidden"); renderNext();}
+
+
+  if (state.active?.mode === "ready") {
+
+    showGetReady();
+
+    return;
+
+  }
+
+
+  if (state.active?.mode === "feeding") {
+
+    showFeeding();
+
+    return;
+
+  }
+
+
+  $("getReadyCard")
+    .classList
+    .add("hidden");
+
+  $("feedingCard")
+    .classList
+    .add("hidden");
+
+  $("getReadyBtn")
+    .classList
+    .remove("hidden");
+
+  $("startFeedingBtn")
+    .classList
+    .add("hidden");
+
+  renderNext();
+
 }
-function renderHistory(){
-  const rows=todayFeeds().slice().reverse();
-  $("history").innerHTML=rows.length?rows.map((f,i)=>`
-    <div class="history-row">
-      <div><b>Feed #${todayFeeds().length-i}</b><small>${fmtTime(f.start)} → ${fmtTime(f.finish)} · ${durationText(f.finish-f.start)}</small></div>
-      <div>${f.amount?f.amount+" mL":"—"}</div>
-    </div>`).join(""):`<div class="muted">No completed feedings today.</div>`;
+
+
+/* =========================
+   NEXT FEED DISPLAY
+========================= */
+
+function renderNext() {
+
+  const window =
+    nextEatingWindow();
+
+
+  if (!window) {
+
+    $("getReadyTime").textContent =
+      "Start your first feeding";
+
+    $("getReadyCountdown").textContent =
+      "—";
+
+    $("nextWindow").textContent =
+      "No previous feeding yet";
+
+    $("lastInfo").textContent =
+      "Finish your first feeding to begin the schedule.";
+
+    $("getReadyBtn").textContent =
+      "START GETTING READY";
+
+    $("getReadyBtn").disabled = true;
+
+    return;
+
+  }
+
+
+  $("getReadyBtn").disabled =
+    false;
+
+
+  const readyTime =
+    nextGetReadyTime();
+
+
+  $("getReadyTime").textContent =
+    fmtTime(readyTime);
+
+
+  $("nextWindow").textContent =
+    `${fmtTime(window.lo)} – ${fmtTime(window.hi)}`;
+
+
+  const lastFeed =
+    state.feeds[
+      state.feeds.length - 1
+    ];
+
+
+  $("lastInfo").textContent =
+    `Last feeding finished ${fmtTime(
+      lastFeed.finish
+    )}`;
+
+
+  updateGetReadyCountdown();
+
 }
-function nextWindow(){
-  if(!state.feeds.length)return null;
-  const last=state.feeds[state.feeds.length-1];
-  const base=state.basis==="finish"?last.finish:last.start;
-  return {lo:base+mins(state.min)*60000,hi:base+mins(state.max)*60000};
+
+
+/* =========================
+   GET-READY COUNTDOWN
+========================= */
+
+function updateGetReadyCountdown() {
+
+  const readyTime =
+    nextGetReadyTime();
+
+
+  if (!readyTime) {
+
+    return;
+
+  }
+
+
+  const now =
+    Date.now();
+
+
+  const difference =
+    readyTime - now;
+
+
+  if (difference > 0) {
+
+    $("getReadyCountdown").textContent =
+      `Start getting ready in ${durationText(
+        difference
+      )}`;
+
+    return;
+
+  }
+
+
+  const window =
+    nextEatingWindow();
+
+
+  if (
+    window &&
+    now >= window.lo
+  ) {
+
+    $("getReadyCountdown").textContent =
+      "Eating window is open";
+
+    return;
+
+  }
+
+
+  $("getReadyCountdown").textContent =
+    `Get ready now · ${durationText(
+      Math.abs(difference)
+    )} late`;
+
 }
-function renderNext(){
-  const w=nextWindow();
-  if(!w){$("nextWindow").textContent="Start a feeding to begin";$("countdown").textContent="—";$("lastInfo").textContent="No feeding recorded yet.";return}
-  $("nextWindow").textContent=`${fmtTime(w.lo)} – ${fmtTime(w.hi)}`;
-  $("lastInfo").textContent=`Last feeding finished ${fmtTime(state.feeds[state.feeds.length-1].finish)}`;
-  updateCountdown();
+
+
+/* =========================
+   24-HOUR PROGRESS
+========================= */
+
+function renderProgress() {
+
+  const count =
+    feedsLast24Hours().length;
+
+
+  $("feedCount").textContent =
+    count;
+
+
+  $("goalNumber").textContent =
+    state.goal;
+
+
+  const percentage =
+    Math.min(
+      100,
+      (count / state.goal) * 100
+    );
+
+
+  $("progressFill").style.width =
+    `${percentage}%`;
+
+
+  if (count >= state.goal) {
+
+    $("progressStatus").textContent =
+      "Minimum reached";
+
+    $("progressMessage").textContent =
+      `You've reached your ${state.goal}-feeding minimum in the last 24 hours.`;
+
+  } else {
+
+    const remaining =
+      state.goal - count;
+
+    $("progressStatus").textContent =
+      "In progress";
+
+    $("progressMessage").textContent =
+      `${remaining} more ${
+        remaining === 1
+          ? "feeding"
+          : "feedings"
+      } needed to reach your minimum.`;
+
+  }
+
 }
-function updateCountdown(){
-  const w=nextWindow(); if(!w)return;
-  const now=Date.now();
-  if(now<w.lo)$("countdown").textContent=`Starts in ${durationText(w.lo-now)}`;
-  else if(now<=w.hi)$("countdown").textContent=`Feeding window is open`;
-  else $("countdown").textContent=`${durationText(now-w.hi)} past the end of your target window`;
+
+
+/* =========================
+   STATS
+========================= */
+
+function renderStats() {
+
+  $("averageReady").textContent =
+    getReadyAverageText();
+
+
+  const sessions =
+    completedReadySessions();
+
+
+  $("readySessionCount").textContent =
+    sessions.length
+      ? `${sessions.length} timed ${
+          sessions.length === 1
+            ? "session"
+            : "sessions"
+        }`
+      : "Initial estimate";
+
+
+  if (!state.feeds.length) {
+
+    $("lastFinished").textContent =
+      "—";
+
+    $("lastDuration").textContent =
+      "—";
+
+    return;
+
+  }
+
+
+  const last =
+    state.feeds[
+      state.feeds.length - 1
+    ];
+
+
+  $("lastFinished").textContent =
+    fmtTime(last.finish);
+
+
+  $("lastDuration").textContent =
+    `Feeding lasted ${
+      durationText(
+        last.finish -
+        last.feedingStart
+      )
+    }`;
+
 }
-function showActive(){
-  $("activeCard").classList.remove("hidden");
-  $("feedNumber").textContent=`Feeding #${todayFeeds().length+1}`;
-  $("startBtn").classList.add("hidden");
-  document.querySelectorAll(".step").forEach(b=>b.classList.toggle("done",!!state.active.steps[b.dataset.step]));
-  $("amount").value=state.active.amount||"";
-  updateElapsed();
+
+
+/* =========================
+   GET-READY SESSION
+========================= */
+
+function showGetReady() {
+
+  $("getReadyCard")
+    .classList
+    .remove("hidden");
+
+  $("feedingCard")
+    .classList
+    .add("hidden");
+
+
+  $("getReadyBtn")
+    .classList
+    .add("hidden");
+
+
+  $("startFeedingBtn")
+    .classList
+    .add("hidden");
+
+
+  updateGetReadyElapsed();
+
 }
-function updateElapsed(){
-  if(!state.active)return;
-  $("elapsed").textContent=durationText(Date.now()-state.active.start);
+
+
+function startGettingReady() {
+
+  if (state.active) {
+
+    return;
+
+  }
+
+
+  state.active = {
+
+    mode: "ready",
+
+    readyStart: Date.now(),
+
+    feedingStart: null
+
+  };
+
+
+  save();
+
+  render();
+
 }
-$("startBtn").onclick=()=>{
-  if(state.active)return;
-  state.active={start:Date.now(),steps:{nurse:false,pump:false,syringe:false},amount:""};
-  save(); render();
+
+
+function updateGetReadyElapsed() {
+
+  if (
+    !state.active ||
+    state.active.mode !== "ready"
+  ) {
+
+    return;
+
+  }
+
+
+  $("getReadyElapsed").textContent =
+    durationText(
+      Date.now() -
+      state.active.readyStart
+    );
+
+}
+
+
+function babyIsReady() {
+
+  if (
+    !state.active ||
+    state.active.mode !== "ready"
+  ) {
+
+    return;
+
+  }
+
+
+  const feedingStart =
+    Date.now();
+
+
+  const readyDuration =
+    feedingStart -
+    state.active.readyStart;
+
+
+  state.active.mode =
+    "feeding";
+
+
+  state.active.feedingStart =
+    feedingStart;
+
+
+  state.active.readyDuration =
+    readyDuration;
+
+
+  save();
+
+  render();
+
+}
+
+
+/* =========================
+   FEEDING SESSION
+========================= */
+
+function showFeeding() {
+
+  $("getReadyCard")
+    .classList
+    .add("hidden");
+
+  $("feedingCard")
+    .classList
+    .remove("hidden");
+
+
+  $("getReadyBtn")
+    .classList
+    .add("hidden");
+
+
+  $("startFeedingBtn")
+    .classList
+    .add("hidden");
+
+
+  updateFeedingElapsed();
+
+}
+
+
+function updateFeedingElapsed() {
+
+  if (
+    !state.active ||
+    state.active.mode !== "feeding"
+  ) {
+
+    return;
+
+  }
+
+
+  $("feedingElapsed").textContent =
+    durationText(
+      Date.now() -
+      state.active.feedingStart
+    );
+
+}
+
+
+function finishFeeding() {
+
+  if (
+    !state.active ||
+    state.active.mode !== "feeding"
+  ) {
+
+    return;
+
+  }
+
+
+  const finish =
+    Date.now();
+
+
+  const feed = {
+
+    feedingStart:
+      state.active.feedingStart,
+
+    finish,
+
+    readyStart:
+      state.active.readyStart,
+
+    readyDuration:
+      state.active.readyDuration
+
+  };
+
+
+  state.feeds.push(feed);
+
+
+  state.active =
+    null;
+
+
+  save();
+
+  render();
+
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
+
+$("getReadyBtn").onclick = () => {
+
+  startGettingReady();
+
 };
-document.querySelectorAll(".step").forEach(b=>b.onclick=()=>{
-  if(!state.active)return;
-  const k=b.dataset.step; state.active.steps[k]=!state.active.steps[k]; save(); showActive();
-});
-$("finishBtn").onclick=()=>{
-  if(!state.active)return;
-  const finish=Date.now();
-  state.feeds.push({start:state.active.start,finish,steps:state.active.steps,amount:$("amount").value.trim()});
-  state.active=null; save(); render();
+
+
+$("babyReadyBtn").onclick = () => {
+
+  babyIsReady();
+
 };
-$("settingsBtn").onclick=()=>{
-  $("homeView").classList.add("hidden");$("settingsView").classList.remove("hidden");
-  $("settingsBasis").value=state.basis;$("settingsMin").value=state.min;$("settingsMax").value=state.max;$("settingsGoal").value=state.goal;
+
+
+$("finishFeedingBtn").onclick = () => {
+
+  finishFeeding();
+
 };
-$("closeSettings").onclick=()=>{$("settingsView").classList.add("hidden");$("homeView").classList.remove("hidden");render()};
-$("saveSettings").onclick=()=>{
-  state.basis=$("intervalBasis").value;state.min=Number($("minHours").value);state.max=Number($("maxHours").value);state.goal=Number($("dailyGoal").value);
-  if(state.min>state.max){alert("Minimum interval must be less than or equal to maximum.");return}
-  save();$("setupCard").classList.add("hidden");render();
+
+
+$("cancelReadyBtn").onclick = () => {
+
+  if (
+    !state.active ||
+    state.active.mode !== "ready"
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    confirm(
+      "Cancel this get-ready session?"
+    )
+  ) {
+
+    state.active =
+      null;
+
+    save();
+
+    render();
+
+  }
+
 };
-$("settingsBasis").onchange=e=>{state.basis=e.target.value;save();render()};
-$("settingsMin").onchange=e=>{state.min=Number(e.target.value);save();render()};
-$("settingsMax").onchange=e=>{state.max=Number(e.target.value);save();render()};
-$("settingsGoal").onchange=e=>{state.goal=Number(e.target.value);save();render()};
-$("resetBtn").onclick=()=>{
-  if(confirm("Delete all feeding history and reset the app?")){state={...defaults,feeds:[]};save();render();$("settingsView").classList.add("hidden");$("homeView").classList.remove("hidden")}
+
+
+/* =========================
+   SETTINGS
+========================= */
+
+$("settingsBtn").onclick = () => {
+
+  $("homeView")
+    .classList
+    .add("hidden");
+
+  $("settingsView")
+    .classList
+    .remove("hidden");
+
 };
-if(!localStorage.getItem(KEY))$("setupCard").classList.remove("hidden");
-setInterval(()=>{if(state.active)updateElapsed();else updateCountdown()},1000);
+
+
+$("closeSettings").onclick = () => {
+
+  $("settingsView")
+    .classList
+    .add("hidden");
+
+  $("homeView")
+    .classList
+    .remove("hidden");
+
+  render();
+
+};
+
+
+$("settingsBasis").onchange = event => {
+
+  state.basis =
+    event.target.value;
+
+  save();
+
+  render();
+
+};
+
+
+$("settingsMin").onchange = event => {
+
+  state.min =
+    Number(event.target.value);
+
+
+  if (state.min > state.max) {
+
+    state.max =
+      state.min;
+
+  }
+
+
+  save();
+
+  render();
+
+};
+
+
+$("settingsMax").onchange = event => {
+
+  state.max =
+    Number(event.target.value);
+
+
+  if (state.max < state.min) {
+
+    state.min =
+      state.max;
+
+  }
+
+
+  save();
+
+  render();
+
+};
+
+
+$("settingsGoal").onchange = event => {
+
+  state.goal =
+    Number(event.target.value);
+
+  save();
+
+  render();
+
+};
+
+
+/* =========================
+   INITIAL SETUP
+========================= */
+
+$("saveSettings").onclick = () => {
+
+  const min =
+    Number(
+      $("minHours").value
+    );
+
+  const max =
+    Number(
+      $("maxHours").value
+    );
+
+
+  if (min > max) {
+
+    alert(
+      "The minimum interval must be less than or equal to the maximum interval."
+    );
+
+    return;
+
+  }
+
+
+  state.basis =
+    $("intervalBasis").value;
+
+  state.min =
+    min;
+
+  state.max =
+    max;
+
+  state.goal =
+    Number(
+      $("dailyGoal").value
+    );
+
+
+  save();
+
+
+  $("setupCard")
+    .classList
+    .add("hidden");
+
+
+  render();
+
+};
+
+
+/* =========================
+   RESET
+========================= */
+
+$("resetBtn").onclick = () => {
+
+  if (
+    confirm(
+      "Delete all feeding history and reset the app?"
+    )
+  ) {
+
+    state = {
+
+      ...defaults,
+
+      feeds: [],
+
+      active: null
+
+    };
+
+
+    save();
+
+    render();
+
+
+    $("settingsView")
+      .classList
+      .add("hidden");
+
+    $("homeView")
+      .classList
+      .remove("hidden");
+
+  }
+
+};
+
+
+/* =========================
+   CLOCK
+========================= */
+
+setInterval(() => {
+
+  if (
+    state.active?.mode === "ready"
+  ) {
+
+    updateGetReadyElapsed();
+
+  }
+
+
+  if (
+    state.active?.mode === "feeding"
+  ) {
+
+    updateFeedingElapsed();
+
+  }
+
+
+  if (!state.active) {
+
+    updateGetReadyCountdown();
+
+  }
+
+
+  renderProgress();
+
+}, 1000);
+
+
+/* =========================
+   SERVICE WORKER
+========================= */
+
+if ("serviceWorker" in navigator) {
+
+  navigator.serviceWorker
+    .register("sw.js")
+    .catch(() => {});
+
+}
+
+
+/* =========================
+   FIRST LOAD
+========================= */
+
+if (
+  !localStorage.getItem(KEY)
+) {
+
+  $("setupCard")
+    .classList
+    .remove("hidden");
+
+}
+
+
 render();
-if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
