@@ -345,6 +345,8 @@ function render() {
 
   renderProgress();
 
+  renderProjectedSchedule();
+
   renderStats();
 
   renderHistory();
@@ -961,6 +963,126 @@ function finishFeeding() {
 
 }
 
+function planningIntervalHours() {
+
+  return (
+    state.min +
+    state.max
+  ) / 2;
+
+}
+
+/* =========================
+   UPCOMING FEEDINGS
+========================= */
+function renderProjectedSchedule() {
+
+  const container =
+    $("projectedSchedule");
+
+
+  if (!state.feeds.length) {
+
+    container.innerHTML =
+      `<div class="muted">
+        Complete your first feeding to see upcoming projections.
+      </div>`;
+
+    return;
+
+  }
+
+
+  const lastFeed =
+    state.feeds[
+      state.feeds.length - 1
+    ];
+
+
+  const intervalMs =
+    planningIntervalHours() *
+    60 *
+    60 *
+    1000;
+
+
+  /*
+    Because your schedule is based on the
+    previous feeding FINISH time, start the
+    first projection from that timestamp.
+  */
+
+  let projectedTime =
+    lastFeed.finish +
+    intervalMs;
+
+
+  const projections = [];
+
+
+  for (
+    let i = 0;
+    i < 8;
+    i++
+  ) {
+
+    projections.push({
+      number: i + 1,
+      time: projectedTime
+    });
+
+
+    projectedTime +=
+      intervalMs;
+
+  }
+
+
+  container.innerHTML =
+    projections
+      .map(item => {
+
+        const label =
+          item.number === 1
+            ? "Next"
+            : `Feed ${item.number}`;
+
+        return `
+          <div class="projected-row">
+
+            <span>
+              ${label}
+            </span>
+
+            <strong>
+              ${fmtTime(item.time)}
+            </strong>
+
+          </div>
+        `;
+
+      })
+      .join("");
+
+
+  const interval =
+    planningIntervalHours();
+
+
+  const hours =
+    Math.floor(interval);
+
+
+  const minutes =
+    Math.round(
+      (interval - hours) * 60
+    );
+
+
+  $("projectionNote").textContent =
+    `Planning estimate: ${hours}h ${minutes}m between feeds. Updates automatically after each completed feeding.`;
+
+}
 
 /* =========================
    BUTTONS
