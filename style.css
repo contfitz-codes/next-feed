@@ -358,3 +358,36 @@ input {
     padding-top: 35px;
   }
 }
+
+.projected-schedule {
+  display: grid;
+}
+
+.projected-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.projected-row:last-child {
+  border-bottom: 0;
+}
+
+.projected-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.projected-row strong {
+  font-size: 16px;
+}
+
+.projection-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
