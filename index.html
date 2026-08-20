@@ -435,6 +435,13 @@
         class="history"
       ></div>
 
+      <button
+  id="addFeedingBtn"
+  class="secondary big"
+>
+  + ADD MISSED FEEDING
+</button>
+      
     </section>
 
 
@@ -561,6 +568,83 @@
 
   </section>
 
+<!-- MANUAL / EDIT FEEDING -->
+
+<section
+  id="feedingEditor"
+  class="card editor-card hidden"
+>
+
+  <div class="section-head">
+
+    <h2 id="feedingEditorTitle">
+      Add Feeding
+    </h2>
+
+    <button
+      id="closeFeedingEditor"
+      class="text-btn"
+    >
+      Cancel
+    </button>
+
+  </div>
+
+
+  <p class="muted">
+    Enter the actual times as accurately as you can.
+    Get-ready start is optional.
+  </p>
+
+
+  <label>
+    Get-ready started
+    <span class="optional-label">
+      optional
+    </span>
+
+    <input
+      id="manualReadyStart"
+      type="datetime-local"
+    >
+  </label>
+
+
+  <label>
+    Baby started eating
+
+    <input
+      id="manualFeedingStart"
+      type="datetime-local"
+    >
+  </label>
+
+
+  <label>
+    Feeding finished
+
+    <input
+      id="manualFeedingFinish"
+      type="datetime-local"
+    >
+  </label>
+
+
+  <div
+    id="manualEntryError"
+    class="form-error hidden"
+  ></div>
+
+
+  <button
+    id="saveManualFeeding"
+    class="primary big"
+  >
+    SAVE FEEDING
+  </button>
+
+</section>
+  
 </main>
 
 <script src="app.js"></script>
