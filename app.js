@@ -1,19 +1,23 @@
 const KEY = "next-feed-v3";
 
 const defaults = {
+
   basis: "finish",
-  min: 2.5,
-  max: 3,
+
+  // 2h 45m default
+  defaultIntervalMinutes: 165,
+
+  // Interval used for the next cycle
+  nextIntervalMinutes: 165,
+
   goal: 8,
 
-  // Initial estimate before we have real data.
   initialReadyMinutes: 15,
 
-  // Completed feeding sessions.
   feeds: [],
 
-  // Current get-ready or feeding session.
   active: null
+
 };
 
 let state = load();
@@ -35,10 +39,45 @@ function load() {
         localStorage.getItem(KEY) || "{}"
       );
 
-    return {
+
+    const merged = {
       ...defaults,
       ...saved
     };
+
+
+    /*
+      Backward compatibility:
+      if older app data used min/max,
+      convert the midpoint to minutes.
+    */
+
+    if (
+      saved.nextIntervalMinutes == null &&
+      saved.min != null &&
+      saved.max != null
+    ) {
+
+      merged.nextIntervalMinutes =
+        Math.round(
+          ((saved.min + saved.max) / 2)
+          * 60
+        );
+
+    }
+
+
+    if (
+      saved.defaultIntervalMinutes == null
+    ) {
+
+      merged.defaultIntervalMinutes =
+        merged.nextIntervalMinutes;
+
+    }
+
+
+    return merged;
 
   } catch {
 
@@ -156,6 +195,32 @@ function toDateTimeLocalValue(timestamp) {
 
 }
 
+function intervalText(totalMinutes) {
+
+  const hours =
+    Math.floor(totalMinutes / 60);
+
+  const minutes =
+    totalMinutes % 60;
+
+
+  if (minutes === 0) {
+
+    return `${hours}h`;
+
+  }
+
+
+  if (hours === 0) {
+
+    return `${minutes}m`;
+
+  }
+
+
+  return `${hours}h ${minutes}m`;
+
+}
 
 /* =========================
    ROLLING 24-HOUR FEEDS
@@ -265,15 +330,18 @@ function nextEatingWindow() {
       : lastFeed.feedingStart;
 
 
+  const target =
+    base +
+    state.nextIntervalMinutes *
+    60 *
+    1000;
+
+
   return {
 
-    lo:
-      base +
-      mins(state.min),
+    lo: target,
 
-    hi:
-      base +
-      mins(state.max)
+    hi: target
 
   };
 
@@ -360,13 +428,46 @@ function setupUI() {
 }
 
 
+
 /* =========================
    MAIN RENDER
 ========================= */
 
+function renderIntervalPicker() {
+
+  $("selectedIntervalText").textContent =
+    `Current target: ${
+      intervalText(
+        state.nextIntervalMinutes
+      )
+    }`;
+
+  document
+    .querySelectorAll(".interval-option")
+    .forEach(button => {
+
+      const minutes =
+        Number(
+          button.dataset.minutes
+        );
+
+      button
+        .classList
+        .toggle(
+          "selected",
+          minutes ===
+          state.nextIntervalMinutes
+        );
+
+    });
+
+}
+
 function render() {
 
   setupUI();
+
+  renderIntervalPicker();
 
   renderProgress();
 
@@ -435,7 +536,14 @@ function renderNext() {
     "Record the first feeding to start your schedule.";
 
   $("nextWindow").textContent =
-    "No previous feeding yet";
+  fmtTime(window.lo);
+
+  $("selectedIntervalText").textContent =
+  `Current target: ${
+    intervalText(
+      state.nextIntervalMinutes
+    )
+  }`;  
 
   $("lastInfo").textContent =
     "After this feeding ends, the app will calculate the next get-ready time.";
@@ -1098,15 +1206,18 @@ function saveManualFeedingEntry() {
 
   const feed = {
 
-    readyStart,
+  readyStart,
 
-    readyDuration,
+  readyDuration,
 
-    feedingStart,
+  feedingStart,
 
-    finish
+  finish,
 
-  };
+  targetIntervalMinutes:
+    state.nextIntervalMinutes
+
+};
 
 
   /*
@@ -1360,22 +1471,27 @@ function finishFeeding() {
 
   const feed = {
 
-    feedingStart:
-      state.active.feedingStart,
+  feedingStart:
+    state.active.feedingStart,
 
-    finish,
+  finish,
 
-    readyStart:
-      state.active.readyStart,
+  readyStart:
+    state.active.readyStart,
 
-    readyDuration:
-      state.active.readyDuration
+  readyDuration:
+    state.active.readyDuration,
 
-  };
+  targetIntervalMinutes:
+    state.nextIntervalMinutes
+
+};
 
 
   state.feeds.push(feed);
 
+  state.nextIntervalMinutes =
+  state.defaultIntervalMinutes;
 
   state.active =
     null;
@@ -1424,10 +1540,9 @@ function renderProjectedSchedule() {
 
 
   const intervalMs =
-    planningIntervalHours() *
-    60 *
-    60 *
-    1000;
+  state.nextIntervalMinutes *
+  60 *
+  1000;
 
 
   /*
@@ -1504,7 +1619,11 @@ function renderProjectedSchedule() {
 
 
   $("projectionNote").textContent =
-    `Planning estimate: ${hours}h ${minutes}m between feeds. Updates automatically after each completed feeding.`;
+  `Planning estimate: ${
+    intervalText(
+      state.nextIntervalMinutes
+    )
+  } between feeds. Updates automatically after each completed feeding.`;
 
 }
 
@@ -1587,6 +1706,96 @@ $("closeFeedingEditor").onclick = () => {
 $("saveManualFeeding").onclick = () => {
 
   saveManualFeedingEntry();
+
+};
+
+/* =========================
+   INTERVAL BUTTONS
+========================= */
+
+document
+  .querySelectorAll(".interval-option")
+  .forEach(button => {
+
+    button.onclick = () => {
+
+      const minutes =
+        Number(
+          button.dataset.minutes
+        );
+
+      state.nextIntervalMinutes =
+        minutes;
+
+      state.defaultIntervalMinutes =
+        minutes;
+
+      save();
+
+      render();
+
+    };
+
+  });
+
+/* =========================
+   CUSTOM INTERVAL
+========================= */
+
+$("customIntervalBtn").onclick = () => {
+
+  $("customIntervalFields")
+    .classList
+    .toggle("hidden");
+
+};
+
+
+$("applyCustomInterval").onclick = () => {
+
+  const hours =
+    Number(
+      $("customIntervalHours").value
+    );
+
+  const minutes =
+    Number(
+      $("customIntervalMinutes").value
+    );
+
+  const total =
+    (hours * 60) +
+    minutes;
+
+
+  if (
+    !Number.isFinite(total) ||
+    total <= 0
+  ) {
+
+    alert(
+      "Please enter a valid interval."
+    );
+
+    return;
+
+  }
+
+
+  state.nextIntervalMinutes =
+    total;
+
+  state.defaultIntervalMinutes =
+    total;
+
+  save();
+
+
+  $("customIntervalFields")
+    .classList
+    .add("hidden");
+
+  render();
 
 };
 
