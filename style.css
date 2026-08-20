@@ -391,3 +391,39 @@ input {
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
+
+.optional-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.form-error {
+  background: #fff2f1;
+  border: 1px solid #e5c4c1;
+  color: var(--danger);
+  padding: 11px 13px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 12px 0;
+}
+
+.editor-card {
+  margin-top: 0;
+}
+
+.history-actions {
+  margin-top: 7px;
+}
+
+.edit-feed-btn {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0;
+  cursor: pointer;
+}
