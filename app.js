@@ -20,6 +20,7 @@ let state = load();
 
 const $ = id => document.getElementById(id);
 
+let editingFeedIndex = null;
 
 /* =========================
    STORAGE
@@ -128,6 +129,30 @@ function durationText(milliseconds) {
 
 
   return `${seconds}s`;
+
+}
+
+function toDateTimeLocalValue(timestamp) {
+
+  if (!timestamp) {
+    return "";
+  }
+
+
+  const date =
+    new Date(timestamp);
+
+
+  const offset =
+    date.getTimezoneOffset() *
+    60000;
+
+
+  return new Date(
+    timestamp - offset
+  )
+    .toISOString()
+    .slice(0, 16);
 
 }
 
@@ -642,7 +667,10 @@ function renderHistory() {
 
   const recentFeeds =
     state.feeds
-      .slice()
+      .map((feed, index) => ({
+        feed,
+        originalIndex: index
+      }))
       .reverse()
       .slice(0, 10);
 
@@ -661,10 +689,15 @@ function renderHistory() {
 
   $("history").innerHTML =
     recentFeeds
-      .map((feed, index) => {
+      .map((item, displayIndex) => {
+
+        const feed =
+          item.feed;
+
 
         const feedNumber =
-          state.feeds.length - index;
+          state.feeds.length -
+          displayIndex;
 
 
         const feedingDuration =
@@ -673,10 +706,11 @@ function renderHistory() {
 
 
         let readyText =
-          "First feeding";
+          "Get-ready time not recorded";
+
 
         if (
-          feed.readyDuration &&
+          feed.readyStart &&
           feed.readyDuration > 0
         ) {
 
@@ -707,6 +741,17 @@ function renderHistory() {
                 ${readyText}
               </small>
 
+              <div class="history-actions">
+
+                <button
+                  class="edit-feed-btn"
+                  data-feed-index="${item.originalIndex}"
+                >
+                  Edit
+                </button>
+
+              </div>
+
             </div>
 
 
@@ -724,7 +769,386 @@ function renderHistory() {
       })
       .join("");
 
+
+  document
+    .querySelectorAll(".edit-feed-btn")
+    .forEach(button => {
+
+      button.onclick = () => {
+
+        const index =
+          Number(
+            button.dataset.feedIndex
+          );
+
+
+        openEditFeeding(index);
+
+      };
+
+    });
+
 }
+
+
+/* =========================
+   MANUAL FEEDING ENTRY
+========================= */
+
+function showFeedingEditor() {
+
+  $("homeView")
+    .classList
+    .add("hidden");
+
+
+  $("settingsView")
+    .classList
+    .add("hidden");
+
+
+  $("feedingEditor")
+    .classList
+    .remove("hidden");
+
+
+  $("manualEntryError")
+    .classList
+    .add("hidden");
+
+}
+
+
+function closeFeedingEditor() {
+
+  editingFeedIndex =
+    null;
+
+
+  $("feedingEditor")
+    .classList
+    .add("hidden");
+
+
+  $("homeView")
+    .classList
+    .remove("hidden");
+
+
+  $("manualReadyStart").value =
+    "";
+
+  $("manualFeedingStart").value =
+    "";
+
+  $("manualFeedingFinish").value =
+    "";
+
+
+  $("manualEntryError")
+    .classList
+    .add("hidden");
+
+
+  render();
+
+}
+
+
+function openAddFeeding() {
+
+  editingFeedIndex =
+    null;
+
+
+  $("feedingEditorTitle").textContent =
+    "Add Missed Feeding";
+
+
+  $("saveManualFeeding").textContent =
+    "SAVE FEEDING";
+
+
+  $("manualReadyStart").value =
+    "";
+
+
+  /*
+    For convenience, default the feeding
+    start and finish near the current time.
+    The user can overwrite both.
+  */
+
+  const now =
+    Date.now();
+
+
+  $("manualFeedingStart").value =
+    toDateTimeLocalValue(now);
+
+
+  $("manualFeedingFinish").value =
+    toDateTimeLocalValue(now);
+
+
+  showFeedingEditor();
+
+}
+
+
+function openEditFeeding(index) {
+
+  const feed =
+    state.feeds[index];
+
+
+  if (!feed) {
+    return;
+  }
+
+
+  editingFeedIndex =
+    index;
+
+
+  $("feedingEditorTitle").textContent =
+    "Edit Feeding";
+
+
+  $("saveManualFeeding").textContent =
+    "SAVE CHANGES";
+
+
+  $("manualReadyStart").value =
+    feed.readyStart
+      ? toDateTimeLocalValue(
+          feed.readyStart
+        )
+      : "";
+
+
+  $("manualFeedingStart").value =
+    toDateTimeLocalValue(
+      feed.feedingStart
+    );
+
+
+  $("manualFeedingFinish").value =
+    toDateTimeLocalValue(
+      feed.finish
+    );
+
+
+  showFeedingEditor();
+
+}
+
+
+function showManualEntryError(message) {
+
+  const element =
+    $("manualEntryError");
+
+
+  element.textContent =
+    message;
+
+
+  element
+    .classList
+    .remove("hidden");
+
+}
+
+
+function saveManualFeedingEntry() {
+
+  const readyValue =
+    $("manualReadyStart").value;
+
+
+  const feedingStartValue =
+    $("manualFeedingStart").value;
+
+
+  const finishValue =
+    $("manualFeedingFinish").value;
+
+
+  /*
+    Feeding start and finish are required.
+  */
+
+  if (
+    !feedingStartValue ||
+    !finishValue
+  ) {
+
+    showManualEntryError(
+      "Please enter when baby started eating and when the feeding finished."
+    );
+
+    return;
+
+  }
+
+
+  const feedingStart =
+    new Date(
+      feedingStartValue
+    ).getTime();
+
+
+  const finish =
+    new Date(
+      finishValue
+    ).getTime();
+
+
+  let readyStart =
+    null;
+
+
+  if (readyValue) {
+
+    readyStart =
+      new Date(
+        readyValue
+      ).getTime();
+
+  }
+
+
+  /*
+    Validate the chronological order.
+  */
+
+  if (
+    !Number.isFinite(feedingStart) ||
+    !Number.isFinite(finish)
+  ) {
+
+    showManualEntryError(
+      "One of the entered times is invalid."
+    );
+
+    return;
+
+  }
+
+
+  if (
+    finish <= feedingStart
+  ) {
+
+    showManualEntryError(
+      "Feeding finish must be after baby started eating."
+    );
+
+    return;
+
+  }
+
+
+  if (
+    readyStart &&
+    readyStart > feedingStart
+  ) {
+
+    showManualEntryError(
+      "Get-ready start must be before baby started eating."
+    );
+
+    return;
+
+  }
+
+
+  /*
+    Don't accidentally allow a future
+    feeding record.
+  */
+
+  if (
+    feedingStart > Date.now() ||
+    finish > Date.now()
+  ) {
+
+    showManualEntryError(
+      "Feeding times cannot be in the future."
+    );
+
+    return;
+
+  }
+
+
+  let readyDuration =
+    null;
+
+
+  if (readyStart) {
+
+    readyDuration =
+      feedingStart -
+      readyStart;
+
+  }
+
+
+  const feed = {
+
+    readyStart,
+
+    readyDuration,
+
+    feedingStart,
+
+    finish
+
+  };
+
+
+  /*
+    Edit existing or create new.
+  */
+
+  if (
+    editingFeedIndex !== null
+  ) {
+
+    state.feeds[
+      editingFeedIndex
+    ] = feed;
+
+  } else {
+
+    state.feeds.push(feed);
+
+  }
+
+
+  /*
+    Important:
+    Manual entries may be inserted for
+    an earlier time, so sort all feeds
+    chronologically afterward.
+  */
+
+  state.feeds.sort(
+    (a, b) =>
+      a.feedingStart -
+      b.feedingStart
+  );
+
+
+  save();
+
+
+  closeFeedingEditor();
+
+}
+
 
 /* =========================
    GET-READY SESSION
@@ -1146,6 +1570,26 @@ $("cancelReadyBtn").onclick = () => {
 
 };
 
+$("addFeedingBtn").onclick = () => {
+
+  openAddFeeding();
+
+};
+
+
+$("closeFeedingEditor").onclick = () => {
+
+  closeFeedingEditor();
+
+};
+
+
+$("saveManualFeeding").onclick = () => {
+
+  saveManualFeedingEntry();
+
+};
+
 
 /* =========================
    SETTINGS
@@ -1156,6 +1600,12 @@ $("settingsBtn").onclick = () => {
   $("homeView")
     .classList
     .add("hidden");
+
+
+  $("feedingEditor")
+    .classList
+    .add("hidden");
+
 
   $("settingsView")
     .classList
