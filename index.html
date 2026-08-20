@@ -142,6 +142,106 @@
         NEXT FEED
       </div>
 
+      <div class="interval-picker">
+
+  <div class="target-label">
+    TARGET TIME BETWEEN FEEDS
+  </div>
+
+  <div class="interval-buttons">
+
+    <button
+      class="interval-option"
+      data-minutes="150"
+    >
+      2h 30m
+    </button>
+
+    <button
+      class="interval-option"
+      data-minutes="165"
+    >
+      2h 45m
+    </button>
+
+    <button
+      class="interval-option"
+      data-minutes="180"
+    >
+      3h
+    </button>
+
+    <button
+      class="interval-option"
+      data-minutes="210"
+    >
+      3h 30m
+    </button>
+
+    <button
+      class="interval-option"
+      data-minutes="240"
+    >
+      4h
+    </button>
+
+  </div>
+
+  <button
+    id="customIntervalBtn"
+    class="text-btn custom-interval-btn"
+  >
+    Custom interval
+  </button>
+
+  <div
+    id="customIntervalFields"
+    class="custom-interval-fields hidden"
+  >
+
+    <label>
+      Hours
+
+      <input
+        id="customIntervalHours"
+        type="number"
+        min="0"
+        max="12"
+        step="1"
+        value="2"
+      >
+    </label>
+
+    <label>
+      Minutes
+
+      <input
+        id="customIntervalMinutes"
+        type="number"
+        min="0"
+        max="59"
+        step="5"
+        value="45"
+      >
+    </label>
+
+    <button
+      id="applyCustomInterval"
+      class="secondary"
+    >
+      Apply
+    </button>
+
+  </div>
+
+  <div
+    id="selectedIntervalText"
+    class="small-note interval-summary"
+  >
+    Current target: 2h 45m
+  </div>
+
+</div>
 
       <div class="next-label">
         START GETTING READY
